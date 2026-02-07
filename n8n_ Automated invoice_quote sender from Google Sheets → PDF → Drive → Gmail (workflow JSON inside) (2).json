@@ -1,0 +1,540 @@
+{
+  "name": "n8n: Automated invoice/quote sender from Google Sheets → PDF → Drive → Gmail (workflow JSON inside)",
+  "nodes": [
+    {
+      "parameters": {
+        "sheetId": "YOUR_SHEET_ID",
+        "range": "Invoices_Quotes!A:I",
+        "options": {
+          "valueRenderMode": "UNFORMATTED_VALUE"
+        }
+      },
+      "id": "3ad8f1d1-9cef-4f1f-b999-e26221a26521",
+      "name": "Read Sheet (Ready)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 2,
+      "position": [
+        848,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "puwABuCAHeSBwFKD",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "dd121dea-e9d8-4d68-8269-7452633da301",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "READY_TO_SEND",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cc9696e4-9fd1-4ad4-9c82-0869df958a43",
+      "name": "Filter READY_TO_SEND",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1072,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "type",
+              "value": "={{$json[\"type\"]}}"
+            },
+            {
+              "name": "customer_name",
+              "value": "={{$json[\"customer_name\"]}}"
+            },
+            {
+              "name": "customer_email",
+              "value": "={{$json[\"customer_email\"]}}"
+            },
+            {
+              "name": "amount",
+              "value": "={{$json[\"amount\"]}}"
+            },
+            {
+              "name": "currency",
+              "value": "={{$json[\"currency\"]}}"
+            },
+            {
+              "name": "description",
+              "value": "={{$json[\"description\"]}}"
+            },
+            {
+              "name": "invoice_id",
+              "value": "={{ $json.invoice_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d3d00072-f257-4652-8fcd-4ffdb2866087",
+      "name": "Prep Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "binaryData": true,
+        "name": "={{ $('Prep Data').item.json.invoice_id }}.pdf",
+        "parents": [
+          "YOUR_DRIVE_FOLDER_ID"
+        ],
+        "options": {}
+      },
+      "id": "8cddc5b3-29f0-427f-8c78-8c12435275fa",
+      "name": "Upload to Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 2,
+      "position": [
+        592,
+        320
+      ],
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "customer_email",
+              "value": "={{ $('Prep Data').item.json.customer_email }}"
+            },
+            {
+              "name": "customer_name",
+              "value": "={{ $('Prep Data').item.json.customer_name }}"
+            },
+            {
+              "name": "type",
+              "value": "={{ $('Prep Data').item.json.type }}"
+            },
+            {
+              "name": "invoice_id",
+              "value": "={{ $('Prep Data').item.json.invoice_id }}"
+            },
+            {
+              "name": "pdf_url",
+              "value": "={{ \"https://drive.google.com/file/d/\" + $json[\"id\"] + \"/view\" }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c68add44-79a2-4952-9bdd-ea815bf6a9c0",
+      "name": "Prepare Email Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        832,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a3759e3d-1562-462a-956a-118996111084",
+      "name": "Schedule Trigger1"
+    },
+    {
+      "parameters": {
+        "resource": "pdf",
+        "pdfTemplateId": "YOUR_APITEMPLATE_TEMPLATE_ID",
+        "jsonParameters": true,
+        "propertiesJson": "={{ JSON.stringify({\n company: \"YOUR_COMPANY_NAME\",\n email: \"billing@example.com\",\n invoice_no: $json[\"invoice_id\"],\n invoice_date: $now,\n invoice_due_date: $now,\n address_bill_to: \"\",\n company_bill_to: $json[\"customer_name\"],\n website: \"https://example.com\",\n document_id: $json[\"invoice_id\"],\n items: [\n {\n item_name: $json[\"description\"],\n unit_price: $json[\"amount\"],\n unit: 1,\n total: $json[\"amount\"]\n }\n ]\n}) }}\n"
+      },
+      "type": "n8n-nodes-base.apiTemplateIo",
+      "typeVersion": 1,
+      "position": [
+        96,
+        320
+      ],
+      "id": "81a448b6-7033-4dbf-9624-72ce065534d8",
+      "name": "Create a pdf"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.download_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        368,
+        320
+      ],
+      "id": "935c20ec-c5a6-4ba5-8ad1-62894e3f97dd",
+      "name": "Download PDF"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.customer_email }}",
+        "subject": "={{ $json[\"type\"] }} – {{ $json[\"invoice_id\"] }}",
+        "message": "=Hi {{ $json[\"customer_name\"] }}, \n\nYour {{ $json[\"type\"].toLowerCase() }} is ready.\nView & Download: {{ $json[\"pdf_url\"] }} \n\nBest regards, \nBilling Team",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1040,
+        320
+      ],
+      "id": "6d7279e2-2f41-4430-b975-612933760455",
+      "name": "Send a message",
+      "webhookId": "5bbbb4b4-ce77-4318-9d50-f921882cadef"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Wn57wJNymWGraZsMtOQpYIvZGdlI55J3hQPM3V3NVH8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Invoices_Quotes",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        0
+      ],
+      "id": "d3e8f691-32fd-47a8-8c80-c94dddde9202",
+      "name": "Read Sheet (without Invoice ID)"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d877d5cd-39d3-44dc-a8f3-862311b7dca8",
+              "name": "invoice_id",
+              "value": "={{$json[\"type\"].charAt(0) + \"-\" + Math.floor(Date.now() / 1000) + \"-\" + $json[\"row_number\"]}}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        416,
+        0
+      ],
+      "id": "564e110e-cb02-47fb-b218-e9514b806fc5",
+      "name": "generate invoice_id"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "invoice_id": "={{ $json.invoice_id }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "invoice_id",
+              "displayName": "invoice_id",
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "type": "number",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        624,
+        0
+      ],
+      "id": "50b0a095-927f-4fef-90b4-e38f3619bfd6",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "puwABuCAHeSBwFKD",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "invoice_id": "={{ $('Read Sheet (Ready)').item.json.invoice_id }}",
+            "status": "={{ $json.labelIds[0] }}",
+            "pdf_url": "={{ $('Prepare Email Data').item.json.pdf_url }}",
+            "sent_at": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "invoice_id"
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1248,
+        320
+      ],
+      "id": "05098aee-ff25-41d7-a98f-bd5052f296b2",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "puwABuCAHeSBwFKD",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Read Sheet (Ready)": [
+      {
+        "json": {
+          "name": "First item",
+          "code": 1
+        }
+      },
+      {
+        "json": {
+          "name": "Second item",
+          "code": 2
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Read Sheet (Ready)": {
+      "main": [
+        [
+          {
+            "node": "Filter READY_TO_SEND",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter READY_TO_SEND": {
+      "main": [
+        [
+          {
+            "node": "Prep Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Data": {
+      "main": [
+        [
+          {
+            "node": "Create a pdf",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to Drive": {
+      "main": [
+        [
+          {
+            "node": "Prepare Email Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Email Data": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Read Sheet (without Invoice ID)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a pdf": {
+      "main": [
+        [
+          {
+            "node": "Download PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download PDF": {
+      "main": [
+        [
+          {
+            "node": "Upload to Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Sheet (without Invoice ID)": {
+      "main": [
+        [
+          {
+            "node": "generate invoice_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate invoice_id": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Read Sheet (Ready)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "542bd216-86f8-4c53-95da-b9b2f4678e49",
+  "meta": {
+    "instanceId": "f9dfac9535066446e555cee9175bafe6eb3ba7f629fdfc23c42a33f5b02ba93d"
+  },
+  "id": "hQJdOPvKvJKDYKVR",
+  "tags": []
+}
