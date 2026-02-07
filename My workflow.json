@@ -1,0 +1,448 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "format": "resolved",
+        "options": {}
+      },
+      "id": "8e8d168e-1572-4696-ab9e-45856ea02d95",
+      "name": "Email Trigger (IMAP)",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "articul",
+              "value": "={{ $json.text.match(/\\d{4,}/) ? $json.text.match(/\\d{4,}/)[0] : 'Не найден' }}"
+            },
+            {
+              "name": "sender_email",
+              "value": "={{ $json.from.text }}"
+            },
+            {
+              "name": "full_text",
+              "value": "={{ ($json.text + ' ' + $json.subject).toLowerCase() }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $now.format('YYYY-MM-DD HH:mm:ss') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "75f91b78-914e-477d-a3b7-21da4c803b72",
+      "name": "Экстрактор Данных",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        64,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "1",
+                    "leftValue": "={{ $json.full_text }}",
+                    "rightValue": "заказ",
+                    "operator": "contains"
+                  },
+                  {
+                    "id": "2",
+                    "leftValue": "={{ $json.full_text }}",
+                    "rightValue": "счет",
+                    "operator": "contains",
+                    "combinator": "or"
+                  },
+                  {
+                    "id": "3",
+                    "leftValue": "={{ $json.full_text }}",
+                    "rightValue": "купить",
+                    "operator": "contains",
+                    "combinator": "or"
+                  }
+                ],
+                "combinator": "or"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "1",
+                    "leftValue": "={{ $json.full_text }}",
+                    "rightValue": "срочно",
+                    "operator": "contains"
+                  },
+                  {
+                    "id": "2",
+                    "leftValue": "={{ $json.full_text }}",
+                    "rightValue": "наличие",
+                    "operator": "contains",
+                    "combinator": "or"
+                  }
+                ],
+                "combinator": "or"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4b0840e6-f805-4bd7-a69d-e74a564bedfb",
+      "name": "Фильтр Приоритетов",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        272,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "🔴 ПОКУПКА"
+            },
+            {
+              "name": "priority",
+              "value": "High"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3989e109-d4a5-4d51-b3fb-17578e58466a",
+      "name": "Set: High",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        512,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "🟡 ИНТЕРЕС"
+            },
+            {
+              "name": "priority",
+              "value": "Medium"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ac8273b7-338c-4e98-b533-e86c36e1dd85",
+      "name": "Set: Medium",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        512,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "🟢 СПРАВКА"
+            },
+            {
+              "name": "priority",
+              "value": "Low"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "50893d49-d931-425c-9d76-2df16934256a",
+      "name": "Set: Low",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        512,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "headerRow": false
+        }
+      },
+      "id": "469cf2de-8e28-4184-b705-f61b03c2840d",
+      "name": "Формат CSV",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 2,
+      "position": [
+        752,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "fileName": "/data/logs_clients.csv",
+        "options": {}
+      },
+      "id": "e51c5420-3d9a-4c90-8794-4db7da311ba2",
+      "name": "Лог на Диск (Local)",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        976,
+        352
+      ],
+      "notesInFlow": true,
+      "notes": "Укажите реальный путь на сервере!"
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.articul }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "4455"
+            },
+            {
+              "value2": "1234",
+              "output": 1
+            }
+          ]
+        },
+        "fallbackOutput": 1
+      },
+      "id": "bf6ade03-3dfb-406b-a0eb-5e10271e213c",
+      "name": "1C Симуляция",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "robot@yourcompany.com",
+        "toEmail": "={{ $json.sender_email }}",
+        "subject": "=Ответ по артикулу {{ $json.articul }}",
+        "options": {}
+      },
+      "id": "a0eda7e1-e3ca-4405-a521-52a54d44bd51",
+      "name": "Email Клиенту (Успех)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        240
+      ],
+      "webhookId": "f04da6b8-40a3-427a-8234-8dec3c98a762"
+    },
+    {
+      "parameters": {
+        "fromEmail": "robot@yourcompany.com",
+        "toEmail": "manager@yourcompany.com",
+        "subject": "=🔥 ГОРЯЧИЙ КЛИЕНТ: {{ $json.articul }}",
+        "options": {}
+      },
+      "id": "81bf3604-9bf5-44c0-a1a2-ed16a7df4f72",
+      "name": "Алерт Менеджеру",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        464
+      ],
+      "webhookId": "fff0bee9-48a0-4961-aadd-0b76791b8646"
+    },
+    {
+      "parameters": {
+        "fromEmail": "robot@yourcompany.com",
+        "toEmail": "={{ $json.sender_email }}",
+        "subject": "Уточнение данных",
+        "options": {}
+      },
+      "id": "6782181b-4483-40c4-998d-21c603a49a44",
+      "name": "Email Клиенту (Ошибка)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        672
+      ],
+      "webhookId": "9ced0096-efce-40d2-a81e-cef7ca14422b"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Email Trigger (IMAP)": {
+      "main": [
+        [
+          {
+            "node": "Экстрактор Данных",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Экстрактор Данных": {
+      "main": [
+        [
+          {
+            "node": "Фильтр Приоритетов",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Фильтр Приоритетов": {
+      "main": [
+        [
+          {
+            "node": "Set: High",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set: Medium",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: High": {
+      "main": [
+        [
+          {
+            "node": "Формат CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Medium": {
+      "main": [
+        [
+          {
+            "node": "Формат CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Low": {
+      "main": [
+        [
+          {
+            "node": "Формат CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Формат CSV": {
+      "main": [
+        [
+          {
+            "node": "Лог на Диск (Local)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Лог на Диск (Local)": {
+      "main": [
+        [
+          {
+            "node": "1C Симуляция",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1C Симуляция": {
+      "main": [
+        [
+          {
+            "node": "Email Клиенту (Успех)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Алерт Менеджеру",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Клиенту (Ошибка)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Алерт Менеджеру",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "ded9b8a1-c216-48e8-85cf-c6c640f52545",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f9dfac9535066446e555cee9175bafe6eb3ba7f629fdfc23c42a33f5b02ba93d"
+  },
+  "id": "tFKZEDuHRep37E0h",
+  "tags": []
+}
